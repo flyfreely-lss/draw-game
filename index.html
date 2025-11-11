@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>你画我猜 - AI绘画识别游戏</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            display: flex;
+            gap: 30px;
+            width: 100%;
+            max-width: 1400px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            min-height: 600px;
+        }
+
+        /* 左侧画板区域 */
+        .canvas-section {
+            flex: 1;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            background: linear-gradient(to bottom, #f8f9fa, #ffffff);
+            border-right: 2px solid #e9ecef;
+        }
+
+        .section-title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        canvas {
+            border: 2px solid #667eea;
+            border-radius: 10px;
+            background: white;
+            cursor: crosshair;
+            flex-grow: 1;
+            max-height: 500px;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.1);
+        }
+
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .control-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        label {
+            font-size: 14px;
+            color: #666;
+            font-weight: 500;
+        }
+
+        input[type="range"] {
+            width: 100px;
+            cursor: pointer;
+        }
+
+        input[type="color"] {
+            width: 50px;
+            height: 40px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        .btn-danger {
+            background: #ff6b6b;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #ee5a52;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255, 107, 107, 0.4);
+        }
+
+        /* 右侧猜测区域 */
+        .guess-section {
+            flex: 1;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            background: linear-gradient(to bottom, #f0f4ff, #ffffff);
+            overflow-y: auto;
+        }
+
+        .guess-container {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .status-box {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            text-align: center;
+            border-left: 4px solid #667eea;
+        }
+
+        .status-text {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+
+        .guesses-list {
+            flex-grow: 1;
+            overflow-y: auto;
+            margin-bottom: 20px;
+        }
+
+        .guess-item {
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .guess-item:hover {
+            border-color: #667eea;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
+        }
+
+        .guess-text {
+            font-size: 16px;
+            font-weight: 500;
+            color: #333;
+            flex-grow: 1;
+        }
+
+        .confidence {
+            background: #667eea;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            min-width: 60px;
+            text-align: center;
+        }
+
+        .confidence.high {
+            background: #51cf66;
+        }
+
+        .confidence.medium {
+            background: #ffd93d;
+            color: #333;
+        }
+
+        .confidence.low {
+            background: #ff922b;
+        }
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: #999;
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .empty-state-icon {
+            font-size: 60px;
+            margin-bottom: 15px;
+        }
+
+        .empty-state-text {
+            font-size: 16px;
+            margin-bottom: 5px;
+        }
+
+        .empty-state-hint {
+            font-size: 13px;
+            color: #bbb;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 1024px) {
+            .container {
+                flex-direction: column;
+                gap: 0;
+            }
+
+            .canvas-section {
+                border-right: none;
+                border-bottom: 2px solid #e9ecef;
+            }
+
+            canvas {
+                max-height: 400px;
+            }
+        }
+
+        .brush-size-display {
+            color: #667eea;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .hint-text {
+            font-size: 12px;
+            color: #999;
+            margin-top: 5px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 左侧：画板 -->
+        <div class="canvas-section">
+            <h2 class="section-title">✏️ 你的画板</h2>
+            <canvas id="drawingCanvas"></canvas>
+            
+            <div class="controls">
+                <div class="control-group">
+                    <label for="brushSize">笔刷大小:</label>
+                    <input type="range" id="brushSize" min="1" max="50" value="5">
+                    <span class="brush-size-display" id="brushSizeDisplay">5px</span>
+                </div>
+
+                <div class="control-group">
+                    <label for="brushColor">颜色:</label>
+                    <input type="color" id="brushColor" value="#000000">
+                </div>
+
+                <button class="btn-danger" id="clearBtn">🗑️ 清空</button>
+                <button class="btn-primary" id="guessBtn">🤖 AI识别</button>
+            </div>
+            <div class="hint-text">在上面的画板上自由绘画，点击"AI识别"让AI猜你画的是什么</div>
+        </div>
+
+        <!-- 右侧：猜测结果 -->
+        <div class="guess-section">
+            <h2 class="section-title">🧠 AI的猜测</h2>
+            
+            <div class="status-box">
+                <div class="status-text" id="statusText">等待你的绘画...</div>
+            </div>
+
+            <div class="guesses-list" id="guessesList">
+                <div class="empty-state">
+                    <div class="empty-state-icon">🎨</div>
+                    <div class="empty-state-text">开始绘画吧！</div>
+                    <div class="empty-state-hint">在左侧画板上画出你想的东西，AI会尝试猜测</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>
