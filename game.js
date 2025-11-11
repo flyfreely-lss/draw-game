@@ -19,10 +19,15 @@ let isDrawing = false;
 let lastX = 0;
 let lastY = 0;
 
+// 撤销功能 - 历史记录
+let drawingHistory = [];
+let currentStep = -1;
+
 // 控制元素
 const brushSizeInput = document.getElementById('brushSize');
 const brushColorInput = document.getElementById('brushColor');
 const brushSizeDisplay = document.getElementById('brushSizeDisplay');
+const undoBtn = document.getElementById('undoBtn');
 const clearBtn = document.getElementById('clearBtn');
 const guessBtn = document.getElementById('guessBtn');
 const statusText = document.getElementById('statusText');
@@ -32,6 +37,35 @@ const guessesList = document.getElementById('guessesList');
 brushSizeInput.addEventListener('input', (e) => {
     brushSizeDisplay.textContent = e.target.value + 'px';
 });
+
+// 保存当前画布状态到历史记录
+function saveState() {
+    // 移除当前步骤之后的所有历史记录
+    drawingHistory = drawingHistory.slice(0, currentStep + 1);
+    
+    // 保存当前画布状态
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    drawingHistory.push(imageData);
+    currentStep++;
+    
+    // 限制历史记录数量，避免内存占用过大
+    if (drawingHistory.length > 50) {
+        drawingHistory.shift();
+        currentStep--;
+    }
+    
+    updateUndoButton();
+}
+
+// 更新撤销按钮状态
+function updateUndoButton() {
+    undoBtn.disabled = currentStep <= 0;
+    undoBtn.style.opacity = currentStep <= 0 ? '0.5' : '1';
+    undoBtn.style.cursor = currentStep <= 0 ? 'not-allowed' : 'pointer';
+}
+
+// 初始化时保存空白画布状态
+saveState();
 
 // 获取鼠标/触摸位置
 function getPosition(e) {
@@ -83,6 +117,8 @@ function draw(e) {
 function stopDrawing() {
     if (isDrawing) {
         isDrawing = false;
+        // 绘画结束后保存状态
+        saveState();
     }
 }
 
@@ -97,10 +133,26 @@ canvas.addEventListener('touchstart', startDrawing);
 canvas.addEventListener('touchmove', draw);
 canvas.addEventListener('touchend', stopDrawing);
 
+// 撤销功能
+undoBtn.addEventListener('click', () => {
+    if (currentStep > 0) {
+        currentStep--;
+        const imageData = drawingHistory[currentStep];
+        ctx.putImageData(imageData, 0, 0);
+        updateUndoButton();
+    }
+});
+
 // 清空画布
 clearBtn.addEventListener('click', () => {
     ctx.fillStyle = 'white';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // 清空历史记录并保存空白状态
+    drawingHistory = [];
+    currentStep = -1;
+    saveState();
+    
     guessesList.innerHTML = `
         <div class="empty-state">
             <div class="empty-state-icon">🎨</div>
